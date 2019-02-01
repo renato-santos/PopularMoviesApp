@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Popular Movies</string>
+    <string name="action_most_popular">Most Popular</string>
+    <string name="action_top_rated">Top Rated</string>
+    <string name="error_message">An error has occurred. Please try again.</string>
+    <string name="error_data_message">Movie data not available</string>
+    <string name="main_activity">Pop Movies</string>
+    <string name="detail_activity">Movie Detail</string>
+</resources>
