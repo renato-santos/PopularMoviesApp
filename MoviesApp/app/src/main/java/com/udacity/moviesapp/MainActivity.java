@@ -37,7 +37,6 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Lis
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        this.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         setTitle(R.string.main_activity);
 
         mRecyclerView = (RecyclerView) findViewById(R.id.recyclerview_movies);
