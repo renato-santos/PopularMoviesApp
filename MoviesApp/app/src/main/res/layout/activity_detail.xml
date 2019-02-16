@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical">
 
     <android.support.v7.widget.Toolbar
@@ -13,13 +13,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/toolBarColor"
-        app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-        >
+        app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
+
     </android.support.v7.widget.Toolbar>
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -35,8 +36,8 @@
                     android:id="@+id/movie_thumb_iv"
                     android:layout_width="150dp"
                     android:layout_height="200dp"
-                    android:layout_marginLeft="10dp"
-                    android:layout_marginTop="5dp"
+                    android:layout_marginLeft="16dp"
+                    android:layout_marginTop="8dp"
                     android:adjustViewBounds="true"
                     android:contentDescription=""
                     android:scaleType="fitXY" />
@@ -45,8 +46,18 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:orientation="vertical"
-                    android:layout_marginLeft="15dp"
-                    android:layout_marginTop="5dp">
+                    android:layout_marginLeft="16dp">
+
+                    <ImageButton
+                        android:id="@+id/ib_favorite_movie"
+                        android:layout_width="30dp"
+                        android:layout_height="27dp"
+                        android:layout_gravity="right"
+                        android:adjustViewBounds="true"
+                        android:scaleType="fitXY"
+                        android:layout_marginRight="8dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@null"/>
                     <TextView
                         android:id="@+id/release_date"
                         android:layout_width="wrap_content"
@@ -69,7 +80,76 @@
                 android:layout_marginLeft="10dp"
                 android:layout_marginRight="10dp"
                 android:textSize="18sp" />
-        </LinearLayout>
 
+            <ImageView
+                android:id="@+id/divider_trailer"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginLeft="8dp"
+                android:layout_marginRight="8dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"
+                app:srcCompat="@color/colorPrimary" />
+
+            <TextView
+                android:id="@+id/tv_trailer_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="24sp"
+                android:layout_marginLeft="8dp"
+                android:text="@string/trailer" />
+
+            <LinearLayout
+                android:id="@+id/layout_trailers_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <TextView
+                android:id="@+id/tv_no_trailer_message"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:layout_marginLeft="8dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone"
+                android:text="@string/no_trailers" />
+
+            <ImageView
+                android:id="@+id/divider_review"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginLeft="8dp"
+                android:layout_marginRight="8dp"
+                android:layout_marginTop="0dp"
+                android:layout_marginBottom="16dp"
+                app:srcCompat="@color/colorPrimary" />
+
+            <TextView
+                android:id="@+id/tv_review_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="24sp"
+                android:layout_marginLeft="8dp"
+                android:text="@string/reviews" />
+
+            <LinearLayout
+                android:id="@+id/layout_review_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+
+            <TextView
+                android:id="@+id/tv_no_review_message"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="18sp"
+                android:layout_marginLeft="8dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone"
+                android:text="@string/no_reviews" />
+        </LinearLayout>
     </ScrollView>
 </LinearLayout>

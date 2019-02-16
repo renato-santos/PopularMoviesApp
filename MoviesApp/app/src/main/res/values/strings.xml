@@ -6,4 +6,9 @@
     <string name="error_data_message">Movie data not available</string>
     <string name="main_activity">Pop Movies</string>
     <string name="detail_activity">Movie Detail</string>
+    <string name="action_favorites">Favorites</string>
+    <string name="trailer">Trailers</string>
+    <string name="reviews">Reviews</string>
+    <string name="no_reviews">There are no reviews for this movie</string>
+    <string name="no_trailers">There are no trailers for this movie</string>
 </resources>

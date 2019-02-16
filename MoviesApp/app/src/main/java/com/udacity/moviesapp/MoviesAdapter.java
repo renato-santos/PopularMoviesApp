@@ -8,10 +8,12 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import com.squareup.picasso.Picasso;
 import com.udacity.moviesapp.model.Movie;
-import java.util.ArrayList;
+import com.udacity.moviesapp.utilities.NetworkUtils;
+
+import java.util.List;
 
 public class MoviesAdapter extends RecyclerView.Adapter<MoviesAdapter.MoviesAdapterViewHolder> {
-    private ArrayList mMoviesData;
+    private List mMoviesData;
     private Context context;
 
     final private ListItemClickListener mOnClickListener;
@@ -21,7 +23,7 @@ public class MoviesAdapter extends RecyclerView.Adapter<MoviesAdapter.MoviesAdap
 
     }
 
-    public MoviesAdapter(Context context, ArrayList mMoviesData, ListItemClickListener listener) {
+    public MoviesAdapter(Context context, List mMoviesData, ListItemClickListener listener) {
         this.context = context;
         mOnClickListener = listener;
         this.mMoviesData = mMoviesData;
@@ -64,7 +66,7 @@ public class MoviesAdapter extends RecyclerView.Adapter<MoviesAdapter.MoviesAdap
         String imageUrl = movie.getPosterPath();
 
         Picasso.with(context)
-                .load(imageUrl)
+                .load(NetworkUtils.IMAGE_BASE_URL + NetworkUtils.IMAGE_BASE_SIZE + imageUrl)
                 .placeholder(R.drawable.placeholder)
                 .error(R.drawable.error)
                 .into(holder.image);
@@ -75,8 +77,9 @@ public class MoviesAdapter extends RecyclerView.Adapter<MoviesAdapter.MoviesAdap
         return mMoviesData.size();
     }
 
-    public void setMoviesData(ArrayList<Movie> moviesData) {
+    public void setMoviesData(List<Movie> moviesData) {
         mMoviesData = moviesData;
+
         notifyDataSetChanged();
     }
 }

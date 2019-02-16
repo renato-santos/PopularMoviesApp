@@ -1,8 +1,10 @@
 package com.udacity.moviesapp;
 
+import android.arch.lifecycle.Observer;
+import android.arch.lifecycle.ViewModelProviders;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
-import android.os.AsyncTask;
+import android.os.Parcelable;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.GridLayoutManager;
@@ -14,24 +16,44 @@ import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.udacity.moviesapp.database.FavoriteEntry;
+import com.udacity.moviesapp.model.FavoriteViewModel;
 import com.udacity.moviesapp.model.Movie;
+import com.udacity.moviesapp.model.MovieEndpointInterface;
+import com.udacity.moviesapp.model.MovieList;
 import com.udacity.moviesapp.utilities.NetworkUtils;
-import com.udacity.moviesapp.utilities.OpenMoviesJsonUtils;
 
-import java.net.URL;
+import java.net.HttpURLConnection;
 import java.util.ArrayList;
+import java.util.List;
+
+import butterknife.BindView;
+import butterknife.ButterKnife;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity implements MoviesAdapter.ListItemClickListener {
 
-    private RecyclerView mRecyclerView;
-    private TextView mErrorMessageDisplay;
-    private ProgressBar mLoadingIndicator;
+    @BindView(R.id.recyclerview_movies) RecyclerView mRecyclerView;
+    @BindView(R.id.tv_error_message_display) TextView mErrorMessageDisplay;
+    @BindView(R.id.pb_loading_indicator) ProgressBar mLoadingIndicator;
     private MoviesAdapter mMoviesAdapter;
-    private ArrayList mMoviesData;
-
-    private final static int PAGE_LIMIT = 3;
+    private List mMoviesData;
+    private GridLayoutManager mGridLayoutManager;
+    private int mPosition = RecyclerView.NO_POSITION;
+    private final String USER_OPTION_KEY = "user_option";
+    private final String RECYCLER_POSITION_KEY = "recycler_position";
+    private final static int PAGE_LIMIT = 5;
     private final static String ORDER_MOST_POPULAR = "popular";
     private final static String ORDER_TOP_RATED = "top_rated";
+    private final static String FAVORITES = "favorites";
+
+    private String userOption;
+
+    ArrayList<Movie> allJsonMovieData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,28 +61,150 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Lis
         setContentView(R.layout.activity_main);
         setTitle(R.string.main_activity);
 
-        mRecyclerView = (RecyclerView) findViewById(R.id.recyclerview_movies);
+        ButterKnife.bind(this);
 
-        mErrorMessageDisplay = (TextView) findViewById(R.id.tv_error_message_display);
+        mGridLayoutManager = new GridLayoutManager(getApplicationContext(), getResources().getInteger(R.integer.grid_columns));
 
-        GridLayoutManager gridLayoutManager = new GridLayoutManager(getApplicationContext(),2);
-
-        mRecyclerView.setLayoutManager(gridLayoutManager);
+        mRecyclerView.setLayoutManager(mGridLayoutManager);
         mRecyclerView.setHasFixedSize(true);
 
-        mLoadingIndicator = (ProgressBar) findViewById(R.id.pb_loading_indicator);
-
         mMoviesData = new ArrayList<Movie>();
-        loadMoviesData(ORDER_MOST_POPULAR);
 
-        mMoviesAdapter = new MoviesAdapter(MainActivity.this, mMoviesData, this );
+        mMoviesAdapter = new MoviesAdapter(MainActivity.this, mMoviesData, this);
         mRecyclerView.setAdapter(mMoviesAdapter);
 
+        if(savedInstanceState != null) {
+            userOption = savedInstanceState.getString(USER_OPTION_KEY);
+            mPosition = savedInstanceState.getInt(RECYCLER_POSITION_KEY);
+        }else{
+            userOption = ORDER_MOST_POPULAR;
+        }
+
+        loadMoviesData(userOption);
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+
+        outState.putInt(RECYCLER_POSITION_KEY,  mGridLayoutManager.findFirstVisibleItemPosition());
+
+        outState.putString(USER_OPTION_KEY, userOption);
+
+        Parcelable listState = mRecyclerView.getLayoutManager().onSaveInstanceState();
+        super.onSaveInstanceState(outState);
+
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+
+        super.onRestoreInstanceState(savedInstanceState);
+
+        if (savedInstanceState.containsKey(RECYCLER_POSITION_KEY)) {
+            mPosition = savedInstanceState.getInt(RECYCLER_POSITION_KEY);
+            if (mPosition == RecyclerView.NO_POSITION) mPosition = 0;
+        }
+
+        if(savedInstanceState.containsKey(USER_OPTION_KEY)){
+            userOption = savedInstanceState.getString(USER_OPTION_KEY);
+        }
     }
 
     public void loadMoviesData(String orderType) {
-        showMoviesDataView();
-        new FetchMoviesTask().execute(orderType);
+
+        final FavoriteViewModel favoriteViewModel =  ViewModelProviders.of(this).get(FavoriteViewModel.class);
+
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(NetworkUtils.MOVIE_BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        MovieEndpointInterface apiService =
+                retrofit.create(MovieEndpointInterface.class);
+
+        mLoadingIndicator.setVisibility(View.VISIBLE);
+        mRecyclerView.setVisibility(View.INVISIBLE);
+
+        allJsonMovieData = new ArrayList<Movie>();
+
+        if (orderType == ORDER_TOP_RATED || orderType == ORDER_MOST_POPULAR) {
+
+            fetchMovies(orderType, apiService, 1);
+
+        } else {
+
+            favoriteViewModel.getFavorites().observe(this, new Observer<List<FavoriteEntry>>() {
+                @Override
+                public void onChanged(@Nullable List<FavoriteEntry> taskEntries) {
+                    final List<Movie> movieList = new ArrayList<Movie>();
+
+                    for(FavoriteEntry favorite : favoriteViewModel.getFavorites().getValue()){
+                        Movie movie = new Movie();
+                        movie.setId(favorite.getMovieId());
+                        movie.setOriginalTitle(favorite.getOriginalTitle());
+                        movie.setOverview(favorite.getPlotSynopsis());
+                        movie.setVoteAverage(Double.parseDouble(favorite.getUserRating()));
+                        movie.setReleaseDate(favorite.getReleaseDate());
+                        movie.setPosterPath(favorite.getImageUrl());
+                        movieList.add(movie);
+                    }
+
+                    populateUI(movieList);
+                    showMoviesDataView();
+
+                    mLoadingIndicator.setVisibility(View.INVISIBLE);
+                    mRecyclerView.setVisibility(View.VISIBLE);
+
+                }
+            });
+        }
+    }
+
+    public void fetchMovies(final String orderType, final MovieEndpointInterface apiService, int page){
+
+        Call<MovieList> call;
+        if (orderType == ORDER_TOP_RATED) {
+            call = apiService.getTopRated(BuildConfig.MOVIE_API_KEY, page);
+        } else {
+            call = apiService.getMostPopular(BuildConfig.MOVIE_API_KEY, page);
+        }
+
+        call.clone().enqueue(new Callback<MovieList>() {
+            @Override
+            public void onResponse(Call<MovieList> call, Response<MovieList> response) {
+                int statusCode = response.code();
+
+                if (statusCode != HttpURLConnection.HTTP_OK) {
+                    showErrorMessage();
+                }
+                MovieList movieList = response.body();
+
+                if (movieList == null) {
+                    showErrorMessage();
+                    return;
+                }
+
+                allJsonMovieData.addAll(movieList.getResults());
+
+                if (movieList.getPage() == PAGE_LIMIT) {
+                    populateUI(allJsonMovieData);
+
+                    showMoviesDataView();
+
+                    mLoadingIndicator.setVisibility(View.INVISIBLE);
+                    mRecyclerView.setVisibility(View.VISIBLE);
+                } else {
+                    fetchMovies(orderType, apiService, movieList.getPage() + 1);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<MovieList> call, Throwable t) {
+                // Log error here since request failed
+                showErrorMessage();
+            }
+        });
     }
 
     public void showMoviesDataView() {
@@ -70,71 +214,16 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Lis
         mRecyclerView.setVisibility(View.VISIBLE);
     }
 
-    public class FetchMoviesTask extends AsyncTask<String, Void, ArrayList<Movie>> {
 
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            mLoadingIndicator.setVisibility(View.VISIBLE);
-            mRecyclerView.setVisibility(View.INVISIBLE);
-        }
 
-        @Override
-        protected ArrayList<Movie> doInBackground(String... params) {
-
-            if (params.length == 0) {
-                return null;
-            }
-
-            String orderType = params[0];
-
-            try {
-
-                ArrayList<Movie> allJsonMovieData = new ArrayList<>();
-                URL moviesRequestUrl;
-                ArrayList<Movie> simpleJsonMovieData;
-                String jsonWeatherResponse;
-
-                for(int page = 1; page <=  PAGE_LIMIT; page++){
-                    moviesRequestUrl =  NetworkUtils.buildUrl(orderType, String.valueOf(page));
-
-                    jsonWeatherResponse = NetworkUtils
-                            .getResponseFromHttpUrl(moviesRequestUrl);
-
-                    simpleJsonMovieData = OpenMoviesJsonUtils
-                            .getSimpleMovieListFromJson(jsonWeatherResponse);
-
-                    allJsonMovieData.addAll(simpleJsonMovieData);
-                }
-
-                return allJsonMovieData;
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(ArrayList<Movie> moviesData) {
-            mLoadingIndicator.setVisibility(View.INVISIBLE);
-
-            if (moviesData == null) {
-                showErrorMessage();
-                return;
-            }
-
-            populateUI(moviesData);
-            showMoviesDataView();
-        }
-    }
-
-    public void populateUI(ArrayList<Movie> moviesData){
+    public void populateUI(List<Movie> moviesData){
 
         mMoviesData.clear();
         mMoviesData = moviesData;
 
         mMoviesAdapter.setMoviesData(mMoviesData);
+
+        mRecyclerView.scrollToPosition(mPosition);
     }
 
     @Override
@@ -148,12 +237,23 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Lis
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
 
+        mPosition = 0;
+        mRecyclerView.scrollToPosition(mPosition);
+
         if (id == R.id.action_most_popular) {
-            loadMoviesData(ORDER_MOST_POPULAR);
+            userOption = ORDER_MOST_POPULAR;
+            loadMoviesData(userOption);
             return true;
         }
         if(id == R.id.action_top_rated){
-            loadMoviesData(ORDER_TOP_RATED);
+            userOption = ORDER_TOP_RATED;
+            loadMoviesData(userOption);
+            return true;
+        }
+
+        if(id == R.id.action_favorites){
+            userOption = FAVORITES;
+            loadMoviesData(userOption);
             return true;
         }
 
@@ -161,10 +261,10 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Lis
     }
 
     public void showErrorMessage() {
-        /* First, hide the currently visible data */
+
         mRecyclerView.setVisibility(View.INVISIBLE);
-        /* Then, show the error */
         mErrorMessageDisplay.setVisibility(View.VISIBLE);
+        mLoadingIndicator.setVisibility(View.INVISIBLE);
     }
 
     @Override
@@ -173,10 +273,11 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Lis
         Movie movie = (Movie) mMoviesData.get(clickedItemIndex);
 
         String originalTitle = movie.getOriginalTitle();
-        String plotSynopsis = movie.getPlot();
-        String userRating = movie.getUserRating();
+        String plotSynopsis = movie.getOverview();
+        String userRating = String.valueOf(movie.getVoteAverage());
         String releaseDate = movie.getReleaseDate();
         String imageUrl = movie.getPosterPath();
+        int movieId = movie.getId();
 
         Intent intent = new Intent(this, DetailActivity.class);
         intent.putExtra("OriginalTitle", originalTitle);
@@ -184,6 +285,7 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Lis
         intent.putExtra("UserRating", userRating);
         intent.putExtra("ReleaseDate", releaseDate);
         intent.putExtra("ImageUrl", imageUrl);
+        intent.putExtra("MovieID", movieId);
 
         this.startActivity(intent);
     }
